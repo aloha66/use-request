@@ -2,9 +2,17 @@
   <div class="home">
     use-request
     {{ value }}
-    <button @click="run">sss</button>
+    <button @click="click(11111111)">111111</button>
+    <button @click="click(22222)">22222222222</button>
     <div>{{ loading }}</div>
-    <div style="margin:10px" v-for="(item, i) in data?.data" :key="i">{{ item.title }}</div>
+    <div style="margin:10px" v-for="(item, i) in data?.data" :key="i">
+      {{ item.title }}
+
+      <div>
+        <button @click="click(item.id)">按钮</button>
+        {{ fetches?.[item.id]?.loading ? 'loading' : '加载完成' }}
+      </div>
+    </div>
   </div>
 </template>
 
@@ -21,15 +29,27 @@ export default defineComponent({
     // https://cnodejs.org/api/v1/topic/5fe2b84498427e7b936a9f8c
     // https://cnodejs.org/api/v1/topic/60017de35d04acb8ec217193
     // https://cnodejs.org/api/v1/topic/5ff48c825393a53d15546b7d
-    const { loading, run, data } = useRequest(
+    const { loading, run, data, params } = useRequest(
       {
         url: 'https://cnodejs.org/api/v1/topics',
         methods: 'get',
         params: { aa: 2 },
       },
-      { loadingDelay: 600 },
+      { loadingDelay: 100 },
     );
-    console.log('result');
+
+    // const { loading, run, data, fetches, params } = useRequest(
+    const detail = useRequest(
+      {
+        url: 'https://cnodejs.org/api/v1/topic/5ffe6b57a2a213311bf6e137',
+        methods: 'get',
+      },
+      { loadingDelay: 100, manual: true, fetchKey: id => id },
+    );
+
+    const click = (id: string) => {
+      detail.run(id);
+    };
 
     // const { data, finished } = useAxios('https://cnodejs.org/api/v1/topics');
     // console.log('data', data.value);
@@ -56,6 +76,11 @@ export default defineComponent({
       data,
       run,
       loading,
+      fetches: detail.fetches,
+      params,
+      // detail,
+      detailData: detail.data,
+      click,
     };
   },
   components: {},

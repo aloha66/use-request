@@ -1,6 +1,6 @@
 // import debounce from 'lodash.debounce';
 // import throttle from 'lodash.throttle';
-import { onMounted, ref, reactive, toRefs } from 'vue';
+import { onMounted, ref, reactive, toRefs, watch, watchEffect, computed, toRef } from 'vue';
 import {
   noop,
   Subscribe,
@@ -46,6 +46,8 @@ function useAsync(service: any, options: any) {
     throwOnError = false,
   } = _options;
 
+  const newstFetchKey = ref(DEFAULT_KEY);
+
   let formatResult: any;
   if ('formatResult' in _options) {
     formatResult = _options.formatResult;
@@ -59,28 +61,26 @@ function useAsync(service: any, options: any) {
   // 参数定义结束
 
   // 缓存或者并行请求需要记录所有请求
-  const fetches = ref<Fetches<any, any>>({});
+  // const fetches = ref<any>({});
+  const fetches = reactive<any>({});
+
   // const subscribe = ((key: string, data: any) => {
   //   fetches.value[key] = data;
   // }) as any;
-
-  const currentFetch = reactive({
-    loading: (ready && !manual) || defaultLoading,
-    data: initialData,
-    error: undefined,
-    params: [],
-  });
 
   const _run = (...args: any) => {
     count += 1;
     // 闭包存储当次请求的 count
     const currentCount = count;
-    currentFetch.loading = !loadingDelay; // 没有设置loadingDelay，默认立马loading
-    currentFetch.params = args;
-    console.log('loadingDelay', loadingDelay, currentFetch.loading);
+    fetches[newstFetchKey.value] = {
+      loading: !loadingDelay,
+      params: args,
+    };
+    // fetches[newstFetchKey.value].loading = !loadingDelay; // 没有设置loadingDelay，默认立马loading
+    // fetches[newstFetchKey.value].params = args;
     if (loadingDelay) {
       loadingDelayTimer = setTimeout(() => {
-        currentFetch.loading = true;
+        fetches[newstFetchKey.value].loading = true;
       }, loadingDelay);
     }
 
@@ -94,9 +94,15 @@ function useAsync(service: any, options: any) {
           clearTimeout(loadingDelayTimer);
         }
         const formattedResult = formatResult ? formatResult(res) : res;
-        currentFetch.data = formattedResult;
-        currentFetch.error = undefined;
-        currentFetch.loading = false;
+        // fetches[newstFetchKey.value].loading = false;
+        // fetches[newstFetchKey.value].data = formattedResult;
+        // fetches[newstFetchKey.value].error = undefined;
+
+        fetches[newstFetchKey.value] = {
+          loading: false,
+          error: undefined,
+          data: formattedResult,
+        };
         if (onSuccess) {
           onSuccess(formattedResult, args);
         }
@@ -107,8 +113,8 @@ function useAsync(service: any, options: any) {
         if (loadingDelayTimer) {
           clearTimeout(loadingDelayTimer);
         }
-        currentFetch.data = currentFetch.error = error;
-        currentFetch.loading = false;
+        // currentFetch.data = currentFetch.error = error;
+        // currentFetch.loading = false;
         if (onError) {
           onError(error, args);
         }
@@ -127,6 +133,21 @@ function useAsync(service: any, options: any) {
   };
 
   const run = (...args: any) => {
+    // 并行请求
+    if (fetchKey) {
+      const key = fetchKey(...args);
+      newstFetchKey.value = key === undefined ? DEFAULT_KEY : key;
+
+      const currentFetchKey = newstFetchKey.value;
+      if (!fetches[currentFetchKey]) {
+        fetches[currentFetchKey] = {
+          loading: (ready && !manual) || defaultLoading,
+          data: initialData,
+          error: undefined,
+          params: [],
+        };
+      }
+    }
     _run(args);
   };
 
@@ -136,8 +157,48 @@ function useAsync(service: any, options: any) {
     }
   });
 
+  watch(
+    fetches,
+    () => {
+      // console.log('fetches', toRefs(fetches[newstFetchKey.value]));
+      // console.log('fetches[newstFetchKey.value]', toRefs(reactive(fetches[newstFetchKey.value])));
+    },
+    { deep: true },
+  );
+
+  const cur = computed(() => {
+    if (fetches[newstFetchKey.value]) {
+      return toRefs(reactive({ ...fetches[newstFetchKey.value] }));
+    }
+
+    return {};
+  });
+  const currentFetch = reactive<any>({
+    loading: (ready && !manual) || defaultLoading,
+    data: initialData,
+    error: undefined,
+    params: [],
+  });
+
+  watchEffect(() => {
+    if (fetches[newstFetchKey.value]) {
+      console.log(4444444444);
+      currentFetch.loading = fetches[newstFetchKey.value].loading;
+      currentFetch.data = fetches[newstFetchKey.value].data;
+      currentFetch.error = fetches[newstFetchKey.value].error;
+      currentFetch.params = fetches[newstFetchKey.value].params;
+    }
+  });
+
   return {
     ...toRefs(currentFetch),
+    // ...toRefs(cur.value),
+    // ...fetches[newstFetchKey.value],
+    // ...toRefs(currentFetch),
+    // ...toRefs(fetches[newstFetchKey.value]),
+    // ...reactive(fetches[newstFetchKey.value]),
+    // ...toRefs(reactive(fetches[newstFetchKey.value])),
+    fetches,
     run,
   };
 }
