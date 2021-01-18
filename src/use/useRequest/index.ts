@@ -63,8 +63,8 @@ export function useRequest(service: any, options: any = {}): any {
                 break;
               }
               case 'object': {
-                const { url, ...rest } = service;
-                fn = requestMethod ? requestMethod(service) : fetchProxy(url, rest);
+                const { url, ...rest } = s;
+                fn = requestMethod ? requestMethod(s) : fetchProxy(url, rest);
               }
             }
           }
