@@ -1,5 +1,5 @@
-// import debounce from 'lodash.debounce';
-// import throttle from 'lodash.throttle';
+import debounce from 'lodash.debounce';
+import throttle from 'lodash.throttle';
 import { onMounted, ref, reactive, toRefs, watch, watchEffect, computed, toRef } from 'vue';
 import {
   noop,
@@ -39,8 +39,8 @@ function useAsync(service: any, options: any) {
     // cacheKey,
     // cacheTime = 5 * 60 * 1000,
     // staleTime = 0,
-    // debounceInterval,
-    // throttleInterval,
+    debounceInterval,
+    throttleInterval,
     initialData,
     ready = true,
     throwOnError = false,
@@ -137,6 +137,10 @@ function useAsync(service: any, options: any) {
         // TODO POll
       });
   };
+  // 节流
+  const throttleRun = throttleInterval ? throttle(_run, throttleInterval) : undefined;
+  // 防抖
+  const debounceRun = debounceInterval ? debounce(_run, debounceInterval) : undefined;
 
   const run = (...args: any) => {
     // 并行请求(可能叫并发请求比较合适)
@@ -154,7 +158,20 @@ function useAsync(service: any, options: any) {
         };
       }
     }
-    _run(args);
+
+    // 节流
+    if (throttleRun) {
+      throttleRun(...args);
+      return Promise.resolve(null as any);
+    }
+    // 防抖
+    if (debounceRun) {
+      debounceRun(...args);
+      // ahooks原话
+      // TODO 如果 options 存在 debounceInterval，或 throttleInterval，则 run 和 refresh 不会返回 Promise。 带类型需要修复后，此处变成 return;。
+      return Promise.resolve(null as any);
+    }
+    return _run(args);
   };
 
   onMounted(() => {
