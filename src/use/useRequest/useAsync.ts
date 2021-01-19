@@ -29,8 +29,8 @@ function useAsync(service: any, options: any) {
     defaultLoading = false,
     loadingDelay,
 
-    // pollingInterval = 0,
-    // pollingWhenHidden = true,
+    pollingInterval = 0,
+    pollingWhenHidden = true,
 
     // defaultParams = [],
     // refreshOnWindowFocus = false,
@@ -54,9 +54,12 @@ function useAsync(service: any, options: any) {
   }
 
   // 参数定义开始
-  let count = 0;
+  let count = 0; // 请求时序
   let loadingDelayTimer: number;
-  const unmountedFlag = false;
+  let pollingTimer: number; // 轮询定时器
+  const unmountedFlag = false; // 是否卸载
+  const unsubscribe: noop[] = [];
+  let pollingWhenVisibleFlag = false; // visible 后，是否继续轮询
 
   // 参数定义结束
 
@@ -64,6 +67,12 @@ function useAsync(service: any, options: any) {
   // const fetches = ref<any>({});
   const fetches = reactive<any>({
     [DEFAULT_KEY]: {},
+  });
+  const currentFetch = reactive({
+    loading: (ready && !manual) || defaultLoading,
+    data: initialData,
+    error: undefined,
+    params: [],
   });
 
   // const subscribe = ((key: string, data: any) => {
@@ -134,13 +143,40 @@ function useAsync(service: any, options: any) {
       })
       .finally(() => {
         if (shoundAbandon()) return;
-        // TODO POll
+        // 轮询逻辑
+        if (pollingInterval) {
+          // 如果屏幕隐藏，并且 !pollingWhenHidden, 则停止轮询，并记录 flag，等 visible 时，继续轮询
+          if (!isDocumentVisible() && !pollingWhenHidden) {
+            pollingWhenVisibleFlag = true;
+            return;
+          }
+          pollingTimer = setTimeout(() => {
+            _run(...args);
+          }, pollingInterval);
+        }
       });
   };
-  // 节流
+  // 初始化节流
   const throttleRun = throttleInterval ? throttle(_run, throttleInterval) : undefined;
-  // 防抖
+  // 初始化防抖
   const debounceRun = debounceInterval ? debounce(_run, debounceInterval) : undefined;
+
+  const refresh = () => {
+    run(currentFetch.params);
+  };
+
+  // 重新轮询
+  const rePolling = () => {
+    if (pollingWhenVisibleFlag) {
+      pollingWhenVisibleFlag = false;
+      refresh();
+    }
+  };
+
+  // 初始化轮询
+  if (pollingInterval) {
+    unsubscribe.push(subscribeVisible(rePolling));
+  }
 
   const run = (...args: any) => {
     // 并行请求(可能叫并发请求比较合适)
@@ -187,23 +223,15 @@ function useAsync(service: any, options: any) {
   //   return {};
   // });
 
-  // 不能直接return fetches[newstFetchKey.value]
-  // 类型是proxy 没办法做响应式
-  // return内容需要响应式的话必须是ref或者reactive (reactive的computed不能作为响应式  存疑待考究)
-  // reactive需要解构保持响应式的话需要调用toRefs方法
-  // 所有基本字段最好预先声明 否则可能会监控不了
-  const currentFetch = reactive<any>({
-    loading: (ready && !manual) || defaultLoading,
-    data: initialData,
-    error: undefined,
-    params: [],
-  });
-
   const cancel = () => {
     // 节流防抖的cancel还在想
     // 复位延迟加载
     if (loadingDelayTimer) {
       clearTimeout(loadingDelayTimer);
+    }
+    // 复位轮询
+    if (pollingTimer) {
+      clearTimeout(pollingTimer);
     }
     // 核心代码
     // 通过计数的方式判断是否抛弃接收这次的请求并复位当前请求的内容
@@ -215,6 +243,7 @@ function useAsync(service: any, options: any) {
     currentFetch.loading = false;
     // 复位请求列表对应的请求
     fetches[newstFetchKey.value].loading = false;
+    pollingWhenVisibleFlag = false;
   };
 
   // 要让watchEffect生效必须具体到监控的属性
@@ -229,11 +258,23 @@ function useAsync(service: any, options: any) {
     }
   });
 
+  // 不能直接return fetches[newstFetchKey.value]
+  // 类型是proxy 没办法做响应式
+  // return内容需要响应式的话必须是ref或者reactive (reactive的computed不能作为响应式  存疑待考究)
+  // reactive需要解构保持响应式的话需要调用toRefs方法
+  // 所有基本字段最好预先声明 否则可能会监控不了
+
+  // 另一个问题
+  // const pollreq = useRequest({...})
+  // 如果想在页面上直接使用pollreq.loading 应该是不行的,具体可以看about.vue
+  // 需重新定义变量导出 {pollreqLoading: pollreq.loading}
+
   return {
     ...toRefs(currentFetch),
     fetches,
     run,
     cancel,
+    refresh,
   };
 }
 
