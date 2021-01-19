@@ -1,4 +1,4 @@
-import { ref, Ref, isRef } from "vue";
+import { ref, Ref, isRef } from 'vue';
 
 // 组合类型 typeA | typeB
 
@@ -9,6 +9,7 @@ export function useToggle(defaultValue: boolean | Ref<boolean> = false) {
   // 需要明确判断什么类型应该走那个流程
   // 否则会被ts提示错误
 
+  // 可用unref语法糖代替
   const state = isRef(defaultValue) ? ref(defaultValue.value) : ref(defaultValue);
 
   const toggle = (value = !state.value) => {
