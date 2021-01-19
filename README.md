@@ -42,10 +42,17 @@ npm run lint
 - ~~并行请求~~
 - ~~防抖/节流~~
 - ~~延迟加载~~
-- 依赖请求(vue 在业务代码用 watchEffect 实现即可)
-- refreshDeps
+- ~~依赖请求(vue 在业务代码用 watchEffect 实现即可)~~
+- ~~refreshDeps~~
 - 缓存 & SWR
 - 预加载
 - 优化修复错误
 - 突变
 - 屏幕聚焦重新请求
+
+### 参考
+
+- [ahooks](https://github.com/alibaba/hooks/tree/master/packages/use-request)
+- [vue-composable/makeAxios](https://github.com/pikax/vue-composable/blob/master/packages/axios/src/makeAxios.ts)
+- [vueuse/useAxios](https://github.com/vueuse/vueuse/blob/master/packages/integrations/useAxios/index.ts)
+- [ahooks-vue/useRequest](https://github.com/dewfall123/ahooks-vue/blob/master/packages/vhooks/src/useRequest/index.ts)

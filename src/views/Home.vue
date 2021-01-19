@@ -2,6 +2,21 @@
   <div class="home">
     use-request
     <div>
+      refreshDeps
+      <select v-model="selected">
+        <option disabled value="">Please select one</option>
+        <option>A</option>
+        <option>B</option>
+        <option>C</option>
+      </select>
+      <select v-model="selected2">
+        <option disabled value="">Please select one</option>
+        <option>J</option>
+        <option>K</option>
+        <option>L</option>
+      </select>
+    </div>
+    <div>
       <button @click="handleReady">ready</button>
       <button @click="secondRequest.refresh">secondRequest Refresh</button>
     </div>
@@ -34,16 +49,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, Ref, watchEffect } from 'vue';
+import { defineComponent, ref, watchEffect } from 'vue';
 import { useRequest } from '@/use';
 
 export default defineComponent({
   name: 'Home',
   setup() {
-    // https://cnodejs.org/api/v1/user/alsotang
-    // https://cnodejs.org/api/v1/topic/5fe2b84498427e7b936a9f8c
-    // https://cnodejs.org/api/v1/topic/60017de35d04acb8ec217193
-    // https://cnodejs.org/api/v1/topic/5ff48c825393a53d15546b7d
+    const selected = ref('');
+    const selected2 = ref('');
     const { loading, run, data, params, fetches, cancel, refresh } = useRequest(
       {
         url: 'https://cnodejs.org/api/v1/topics',
@@ -127,6 +140,15 @@ export default defineComponent({
 
     // 依赖请求结束
 
+    // refreshDeps 开始
+    // 可能就是这样实现
+    // 我看效果就是某个state变化了,然后再触发某个请求
+    const reRequest = useRequest('https://cnodejs.org/api/v1/user/alsotang', {
+      refreshDeps: [selected, selected2],
+    });
+
+    // refreshDeps 结束
+
     return {
       data,
       run,
@@ -145,6 +167,8 @@ export default defineComponent({
       firstRequestData,
       secondRequest,
       pollreq,
+      selected,
+      selected2,
       pollreqLoading: pollreq.loading,
       pollreqComputed: pollreq.data, //如果再用?.获取data后面的值会没有数据 估计也是跟响应式结构有关(待考究)
     };

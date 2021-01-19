@@ -7,6 +7,7 @@ const listeners: any[] = [];
 function subscribe(listener: () => void) {
   listeners.push(listener); // 事件进队
   return function unsubscribe() {
+    // 销毁前卸载
     const index = listeners.indexOf(listener);
     listeners.splice(index, 1);
   };

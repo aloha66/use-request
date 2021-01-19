@@ -1,6 +1,15 @@
 import debounce from 'lodash.debounce';
 import throttle from 'lodash.throttle';
-import { onMounted, ref, reactive, toRefs, watch, watchEffect, computed, toRef } from 'vue';
+import {
+  onMounted,
+  ref,
+  reactive,
+  toRefs,
+  watch,
+  watchEffect,
+  computed,
+  onBeforeUnmount,
+} from 'vue';
 import {
   noop,
   Subscribe,
@@ -21,7 +30,7 @@ const DEFAULT_KEY = 'AHOOKS_USE_REQUEST_DEFAULT_KEY';
 function useAsync(service: any, options: any) {
   const _options = options || {};
   const {
-    // refreshDeps = [],
+    refreshDeps = [],
     manual = false,
     onSuccess = () => {},
     onError = () => {},
@@ -57,7 +66,7 @@ function useAsync(service: any, options: any) {
   let count = 0; // 请求时序
   let loadingDelayTimer: number;
   let pollingTimer: number; // 轮询定时器
-  const unmountedFlag = false; // 是否卸载
+  let unmountedFlag = false; // 是否卸载
   const unsubscribe: noop[] = [];
   let pollingWhenVisibleFlag = false; // visible 后，是否继续轮询
 
@@ -150,6 +159,8 @@ function useAsync(service: any, options: any) {
             pollingWhenVisibleFlag = true;
             return;
           }
+          // 只保留一个poll定时器 ahooks没加可能有bug
+          clearTimeout(pollingTimer);
           pollingTimer = setTimeout(() => {
             _run(...args);
           }, pollingInterval);
@@ -216,6 +227,14 @@ function useAsync(service: any, options: any) {
     }
   });
 
+  onBeforeUnmount(() => {
+    unmountedFlag = true;
+    cancel();
+    unsubscribe.forEach(s => {
+      s();
+    });
+  });
+
   // const cur = computed(() => {
   //   if (fetches[newstFetchKey.value]) {
   //     return toRefs(reactive({ ...fetches[newstFetchKey.value] }));
@@ -256,6 +275,10 @@ function useAsync(service: any, options: any) {
       // 这种写法目前是不行的 会出现所有属性是undefined
       // currentFetch = reactive({ ...fetches[newstFetchKey.value] });
     }
+  });
+
+  watch(refreshDeps, () => {
+    refresh();
   });
 
   // 不能直接return fetches[newstFetchKey.value]
