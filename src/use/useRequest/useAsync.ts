@@ -62,7 +62,9 @@ function useAsync(service: any, options: any) {
 
   // 缓存或者并行请求需要记录所有请求
   // const fetches = ref<any>({});
-  const fetches = reactive<any>({});
+  const fetches = reactive<any>({
+    [DEFAULT_KEY]: {},
+  });
 
   // const subscribe = ((key: string, data: any) => {
   //   fetches.value[key] = data;
@@ -72,12 +74,12 @@ function useAsync(service: any, options: any) {
     count += 1;
     // 闭包存储当次请求的 count
     const currentCount = count;
-    fetches[newstFetchKey.value] = {
-      loading: !loadingDelay,
-      params: args,
-    };
-    // fetches[newstFetchKey.value].loading = !loadingDelay; // 没有设置loadingDelay，默认立马loading
-    // fetches[newstFetchKey.value].params = args;
+    // fetches[newstFetchKey.value] = {
+    //   loading: !loadingDelay,
+    //   params: args,
+    // };
+    fetches[newstFetchKey.value].loading = !loadingDelay; // 没有设置loadingDelay，默认立马loading
+    fetches[newstFetchKey.value].params = args;
     if (loadingDelay) {
       loadingDelayTimer = setTimeout(() => {
         fetches[newstFetchKey.value].loading = true;
@@ -94,15 +96,15 @@ function useAsync(service: any, options: any) {
           clearTimeout(loadingDelayTimer);
         }
         const formattedResult = formatResult ? formatResult(res) : res;
-        // fetches[newstFetchKey.value].loading = false;
-        // fetches[newstFetchKey.value].data = formattedResult;
-        // fetches[newstFetchKey.value].error = undefined;
+        fetches[newstFetchKey.value].loading = false;
+        fetches[newstFetchKey.value].data = formattedResult;
+        fetches[newstFetchKey.value].error = undefined;
 
-        fetches[newstFetchKey.value] = {
-          loading: false,
-          error: undefined,
-          data: formattedResult,
-        };
+        // fetches[newstFetchKey.value] = {
+        //   loading: false,
+        //   error: undefined,
+        //   data: formattedResult,
+        // };
         if (onSuccess) {
           onSuccess(formattedResult, args);
         }
@@ -113,6 +115,10 @@ function useAsync(service: any, options: any) {
         if (loadingDelayTimer) {
           clearTimeout(loadingDelayTimer);
         }
+
+        fetches[newstFetchKey.value].loading = false;
+        fetches[newstFetchKey.value].data = undefined;
+        fetches[newstFetchKey.value].error = error;
         // currentFetch.data = currentFetch.error = error;
         // currentFetch.loading = false;
         if (onError) {
@@ -133,7 +139,7 @@ function useAsync(service: any, options: any) {
   };
 
   const run = (...args: any) => {
-    // 并行请求
+    // 并行请求(可能叫并发请求比较合适)
     if (fetchKey) {
       const key = fetchKey(...args);
       newstFetchKey.value = key === undefined ? DEFAULT_KEY : key;
@@ -157,22 +163,18 @@ function useAsync(service: any, options: any) {
     }
   });
 
-  watch(
-    fetches,
-    () => {
-      // console.log('fetches', toRefs(fetches[newstFetchKey.value]));
-      // console.log('fetches[newstFetchKey.value]', toRefs(reactive(fetches[newstFetchKey.value])));
-    },
-    { deep: true },
-  );
+  // const cur = computed(() => {
+  //   if (fetches[newstFetchKey.value]) {
+  //     return toRefs(reactive({ ...fetches[newstFetchKey.value] }));
+  //   }
+  //   return {};
+  // });
 
-  const cur = computed(() => {
-    if (fetches[newstFetchKey.value]) {
-      return toRefs(reactive({ ...fetches[newstFetchKey.value] }));
-    }
-
-    return {};
-  });
+  // 不能直接return fetches[newstFetchKey.value]
+  // 类型是proxy 没办法做响应式
+  // return内容需要响应式的话必须是ref或者reactive (reactive的computed不能作为响应式  存疑待考究)
+  // reactive需要解构保持响应式的话需要调用toRefs方法
+  // 所有基本字段最好预先声明 否则可能会监控不了
   const currentFetch = reactive<any>({
     loading: (ready && !manual) || defaultLoading,
     data: initialData,
@@ -180,24 +182,20 @@ function useAsync(service: any, options: any) {
     params: [],
   });
 
+  // 要让watchEffect生效必须具体到监控的属性
   watchEffect(() => {
     if (fetches[newstFetchKey.value]) {
-      console.log(4444444444);
       currentFetch.loading = fetches[newstFetchKey.value].loading;
       currentFetch.data = fetches[newstFetchKey.value].data;
       currentFetch.error = fetches[newstFetchKey.value].error;
       currentFetch.params = fetches[newstFetchKey.value].params;
+      // 这种写法目前是不行的 会出现所有属性是undefined
+      // currentFetch = reactive({ ...fetches[newstFetchKey.value] });
     }
   });
 
   return {
     ...toRefs(currentFetch),
-    // ...toRefs(cur.value),
-    // ...fetches[newstFetchKey.value],
-    // ...toRefs(currentFetch),
-    // ...toRefs(fetches[newstFetchKey.value]),
-    // ...reactive(fetches[newstFetchKey.value]),
-    // ...toRefs(reactive(fetches[newstFetchKey.value])),
     fetches,
     run,
   };
