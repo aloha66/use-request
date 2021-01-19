@@ -23,7 +23,8 @@ export interface FetchResult<R, P extends any[]> {
   loading: boolean;
   data: R | undefined;
   error: Error | undefined;
-  params: P;
+  // params: P;
+  params: { value: '' };
   cancel: noop;
   refresh: () => Promise<R>;
   mutate: Mutate<R>;

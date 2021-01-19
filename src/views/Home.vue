@@ -2,6 +2,10 @@
   <div class="home">
     use-request
     <div>
+      <button @click="handleReady">ready</button>
+      <button @click="secondRequest.refresh">secondRequest Refresh</button>
+    </div>
+    <div>
       轮询
       <div v-if="pollreqLoading">loading...</div>
       <div v-else>{{ pollreqComputed?.data?.visit_count }}</div>
@@ -30,7 +34,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, Ref, watchEffect } from 'vue';
 import { useRequest } from '@/use';
 
 export default defineComponent({
@@ -89,6 +93,40 @@ export default defineComponent({
       detail.cancel();
     };
 
+    function firstParam(id: string) {
+      return 'https://cnodejs.org/api/v1/topic/' + id;
+    }
+
+    // 依赖请求开始(和react的渲染不一样,vue的setup只会执行一次,不需要ready属性)
+    const { data: firstRequestData, params: firstPa, ...firstRequest } = useRequest(
+      id => firstParam(id),
+      {
+        manual: true,
+      },
+    );
+
+    function secondParam(params: string) {
+      return {
+        url: 'https://cnodejs.org/api/v1/topic/5fe2b84498427e7b936a9f8c',
+        methods: 'get',
+        params,
+      };
+    }
+
+    const secondRequest = useRequest(params => secondParam(params), { manual: true });
+
+    watchEffect(() => {
+      if (firstRequestData.value) {
+        secondRequest.run(firstPa.value[0]);
+      }
+    });
+
+    const handleReady = () => {
+      firstRequest.run('60017de35d04acb8ec217193');
+    };
+
+    // 依赖请求结束
+
     return {
       data,
       run,
@@ -103,6 +141,9 @@ export default defineComponent({
       cancel,
       getList,
       cancelCur,
+      handleReady,
+      firstRequestData,
+      secondRequest,
       pollreq,
       pollreqLoading: pollreq.loading,
       pollreqComputed: pollreq.data, //如果再用?.获取data后面的值会没有数据 估计也是跟响应式结构有关(待考究)
