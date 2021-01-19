@@ -72,7 +72,7 @@ function useAsync(service: any, options: any) {
 
   const _run = (...args: any) => {
     count += 1;
-    // 闭包存储当次请求的 count
+    // 同步计数,如果计数不等会抛弃请求 cancel的时候会count自动加一
     const currentCount = count;
     // fetches[newstFetchKey.value] = {
     //   loading: !loadingDelay,
@@ -199,6 +199,24 @@ function useAsync(service: any, options: any) {
     params: [],
   });
 
+  const cancel = () => {
+    // 节流防抖的cancel还在想
+    // 复位延迟加载
+    if (loadingDelayTimer) {
+      clearTimeout(loadingDelayTimer);
+    }
+    // 核心代码
+    // 通过计数的方式判断是否抛弃接收这次的请求并复位当前请求的内容
+    // 只是不接收请求的返回结果,并不是实际意义上的取消请求
+    // 实际意义的取消请求需与请求库做一定的配合
+    // 计划将在外层的业务处理封装
+    count += 1;
+    // 复位当前请求
+    currentFetch.loading = false;
+    // 复位请求列表对应的请求
+    fetches[newstFetchKey.value].loading = false;
+  };
+
   // 要让watchEffect生效必须具体到监控的属性
   watchEffect(() => {
     if (fetches[newstFetchKey.value]) {
@@ -215,6 +233,7 @@ function useAsync(service: any, options: any) {
     ...toRefs(currentFetch),
     fetches,
     run,
+    cancel,
   };
 }
 

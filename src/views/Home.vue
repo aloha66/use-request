@@ -2,8 +2,8 @@
   <div class="home">
     use-request
     {{ value }}
-    <button @click="click(111)">111111</button>
-    <button @click="click(222)">22222222222</button>
+    <button @click="getList()">getList</button>
+    <button @click="cancel">cancelGetList</button>
     <div>{{ loading }}</div>
     <div style="margin:10px" v-for="(item, i) in data?.data" :key="i">
       {{ item.title }}
@@ -12,10 +12,11 @@
         <button @click="click(item.id)">按钮</button>
         作者:
         {{
-          fetches?.[item.id]?.loading
+          detailFetches?.[item.id]?.loading
             ? 'loading'
-            : fetches?.[item.id]?.data?.data?.author?.loginname
+            : detailFetches?.[item.id]?.data?.data?.author?.loginname
         }}
+        <button v-if="detailFetches?.[item.id]?.loading" @click="cancelCur">取消当前请求</button>
       </div>
     </div>
   </div>
@@ -32,7 +33,7 @@ export default defineComponent({
     // https://cnodejs.org/api/v1/topic/5fe2b84498427e7b936a9f8c
     // https://cnodejs.org/api/v1/topic/60017de35d04acb8ec217193
     // https://cnodejs.org/api/v1/topic/5ff48c825393a53d15546b7d
-    const { loading, run, data, params } = useRequest(
+    const { loading, run, data, params, fetches, cancel } = useRequest(
       {
         url: 'https://cnodejs.org/api/v1/topics',
         methods: 'get',
@@ -55,19 +56,31 @@ export default defineComponent({
       fetchKey: id => id,
     });
 
+    const getList = () => {
+      run();
+    };
+
     const click = (id: string) => {
       detail.run(id);
+    };
+
+    const cancelCur = () => {
+      detail.cancel();
     };
 
     return {
       data,
       run,
       loading,
-      fetches: detail.fetches,
+      fetches,
+      detailFetches: detail.fetches,
       params,
       // detail,
       detailData: detail.data,
       click,
+      cancel,
+      getList,
+      cancelCur,
     };
   },
   components: {},
