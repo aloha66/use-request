@@ -24,6 +24,7 @@ import {
 } from './types';
 import { isDocumentVisible } from './utils';
 import subscribeVisible from './utils/windowVisible';
+import { getCache, setCache } from './utils/cache';
 
 const DEFAULT_KEY = 'AHOOKS_USE_REQUEST_DEFAULT_KEY';
 
@@ -41,13 +42,13 @@ function useAsync(service: any, options: any) {
     pollingInterval = 0,
     pollingWhenHidden = true,
 
-    // defaultParams = [],
+    defaultParams = [],
     // refreshOnWindowFocus = false,
     // focusTimespan = 5000,
     fetchKey,
-    // cacheKey,
-    // cacheTime = 5 * 60 * 1000,
-    // staleTime = 0,
+    cacheKey,
+    cacheTime = 5 * 60 * 1000,
+    staleTime = 0,
     debounceInterval,
     throttleInterval,
     initialData,
@@ -84,10 +85,6 @@ function useAsync(service: any, options: any) {
     params: [],
   });
 
-  // const subscribe = ((key: string, data: any) => {
-  //   fetches.value[key] = data;
-  // }) as any;
-
   const _run = (...args: any) => {
     count += 1;
     // 同步计数,如果计数不等会抛弃请求 cancel的时候会count自动加一
@@ -123,6 +120,14 @@ function useAsync(service: any, options: any) {
         //   error: undefined,
         //   data: formattedResult,
         // };
+
+        // 拿到结果后存入cache
+        if (cacheKey) {
+          setCache(cacheKey, cacheTime, {
+            cacheKeyFetches: { [cacheKey]: fetches[newstFetchKey.value] },
+            newstFetchKey: cacheKey,
+          });
+        }
         if (onSuccess) {
           onSuccess(formattedResult, args);
         }
@@ -190,6 +195,28 @@ function useAsync(service: any, options: any) {
   }
 
   const run = (...args: any) => {
+    // 缓存处理开始
+    if (cacheKey) {
+      // 看这里的代码的时候先看下面setCache的内容
+      // cacheData的数据结构{cacheKeyFetches,newstFetchKey}
+      const cacheData = getCache(cacheKey)?.data;
+
+      if (cacheData) {
+        // 不能return 否则其他逻辑不能走
+        newstFetchKey.value = cacheData.newstFetchKey;
+        const currentFetchKey = newstFetchKey.value;
+        Object.keys(cacheData.cacheKeyFetches).forEach(key => {
+          const cacheFetch = cacheData.cacheKeyFetches[key];
+          fetches[currentFetchKey] = {
+            loading: cacheFetch.loading,
+            params: cacheFetch.params,
+            data: cacheFetch.data,
+            error: cacheFetch.error,
+          };
+        });
+      }
+    }
+    // 缓存处理结束
     // 并行请求(可能叫并发请求比较合适)
     if (fetchKey) {
       const key = fetchKey(...args);
@@ -223,7 +250,24 @@ function useAsync(service: any, options: any) {
 
   onMounted(() => {
     if (!manual) {
-      run();
+      // 如果有缓存，则重新请求
+      // ahooks的源码是这个条件 if (Object.keys(fetches).length > 0) {
+      // 因为初始化的时候我加了一个默认的空对象 所以这里永远都会大于0
+      // 改成判断是否有cacheKey会比较准确
+      if (cacheKey) {
+        // 如果 staleTime 是 -1，则 cache 永不过期
+        // 如果 staleTime 超期了，则重新请求
+        const cacheStartTime = getCache(cacheKey)?.startTime || 0;
+
+        // 当前时间-缓存开始的时候是否小于等于预设的缓存数据保持新鲜时间
+        if (!(staleTime === -1 || new Date().getTime() - cacheStartTime <= staleTime)) {
+          // 重新请求
+          refresh();
+        }
+      } else {
+        // 第一次默认执行，可以通过 defaultParams 设置参数
+        run(...(defaultParams as any));
+      }
     }
   });
 
@@ -277,6 +321,7 @@ function useAsync(service: any, options: any) {
     }
   });
 
+  // refreshDeps
   watch(refreshDeps, () => {
     refresh();
   });

@@ -44,7 +44,7 @@ npm run lint
 - ~~延迟加载~~
 - ~~依赖请求(vue 在业务代码用 watchEffect 实现即可)~~
 - ~~refreshDeps~~
-- 缓存 & SWR
+- ~~缓存 & SWR~~
 - 预加载
 - 优化修复错误
 - 突变

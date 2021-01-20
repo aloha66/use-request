@@ -2,6 +2,10 @@
   <div class="home">
     use-request
     <div>
+      swr 时间:{{ swrRequestData?.data?.create_at }}
+      <button @click="swrRequest.run">发送</button>
+    </div>
+    <div>
       refreshDeps
       <select v-model="selected">
         <option disabled value="">Please select one</option>
@@ -149,6 +153,28 @@ export default defineComponent({
 
     // refreshDeps 结束
 
+    // swr开始
+
+    function swrFunc() {
+      const obj = {
+        0: '5ff48c825393a53d15546b7d',
+        1: '575c0f3a2ad3c06f1aa3d5ed',
+        2: '545249abd0c2f0fe2f533ad6',
+        3: '590d3b633504ce1c2ac45904',
+        4: '5ff2df1e5393a512755468b4',
+        5: '5ff17dff5393a578ff5465a7',
+      };
+      const inx = Math.floor(Math.random() * 6);
+      // @ts-ignore
+      return 'https://cnodejs.org/api/v1/topic/' + obj[inx];
+    }
+
+    const swrRequest = useRequest(() => swrFunc(), {
+      cacheKey: 'swr',
+    });
+
+    // swr结束
+
     return {
       data,
       run,
@@ -169,6 +195,9 @@ export default defineComponent({
       pollreq,
       selected,
       selected2,
+      swrRequestFetch: swrRequest.fetches,
+      swrRequest,
+      swrRequestData: swrRequest.data,
       pollreqLoading: pollreq.loading,
       pollreqComputed: pollreq.data, //如果再用?.获取data后面的值会没有数据 估计也是跟响应式结构有关(待考究)
     };
