@@ -4,3 +4,11 @@ export function isDocumentVisible(): boolean {
   }
   return true;
 }
+
+export function isOnline(): boolean {
+  // https://developer.mozilla.org/zh-CN/docs/Web/API/NavigatorOnLine/onLine
+  if (typeof navigator.onLine !== 'undefined') {
+    return navigator.onLine;
+  }
+  return true;
+}

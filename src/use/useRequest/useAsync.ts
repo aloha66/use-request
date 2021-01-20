@@ -24,7 +24,9 @@ import {
 } from './types';
 import { isDocumentVisible } from './utils';
 import subscribeVisible from './utils/windowVisible';
+import subscribeFocus from './utils/windowFocus';
 import { getCache, setCache } from './utils/cache';
+import limit from './utils/limit';
 
 const DEFAULT_KEY = 'AHOOKS_USE_REQUEST_DEFAULT_KEY';
 
@@ -43,8 +45,8 @@ function useAsync(service: any, options: any) {
     pollingWhenHidden = true,
 
     defaultParams = [],
-    // refreshOnWindowFocus = false,
-    // focusTimespan = 5000,
+    refreshOnWindowFocus = false,
+    focusTimespan = 5000,
     fetchKey,
     cacheKey,
     cacheTime = 5 * 60 * 1000,
@@ -180,6 +182,8 @@ function useAsync(service: any, options: any) {
   const refresh = () => {
     run(currentFetch.params);
   };
+  // 限制请求
+  const limitRefresh = limit(refresh, focusTimespan);
 
   // 重新轮询
   const rePolling = () => {
@@ -192,6 +196,10 @@ function useAsync(service: any, options: any) {
   // 初始化轮询
   if (pollingInterval) {
     unsubscribe.push(subscribeVisible(rePolling));
+  }
+
+  if (refreshOnWindowFocus) {
+    unsubscribe.push(subscribeFocus(limitRefresh));
   }
 
   const run = (...args: any) => {

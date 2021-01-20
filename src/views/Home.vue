@@ -2,6 +2,11 @@
   <div class="home">
     use-request
     <div>
+      屏幕聚焦
+      <div v-if="screenRequestLoading">loading</div>
+      {{ screenRequestScore?.data?.score }}
+    </div>
+    <div>
       突变
       {{ swrRequestData?.ttt }}
       <button @click="mutessss">突变</button>
@@ -185,6 +190,12 @@ export default defineComponent({
       swrRequest.mutate({ ttt: 2222222222222 });
     };
 
+    // 屏幕聚焦
+
+    const screenRequest = useRequest('https://cnodejs.org/api/v1/user/alsotang', {
+      refreshOnWindowFocus: true,
+    });
+
     return {
       data,
       run,
@@ -208,6 +219,8 @@ export default defineComponent({
       swrRequestFetch: swrRequest.fetches,
       swrRequest,
       mutessss,
+      screenRequestScore: screenRequest.data,
+      screenRequestLoading: screenRequest.loading,
       swrRequestData: swrRequest.data,
       pollreqLoading: pollreq.loading,
       pollreqComputed: pollreq.data, //如果再用?.获取data后面的值会没有数据 估计也是跟响应式结构有关(待考究)
