@@ -248,6 +248,16 @@ function useAsync(service: any, options: any) {
     return _run(args);
   };
 
+  const mutate = (data: any) => {
+    if (typeof data === 'function') {
+      fetches[newstFetchKey.value].data = data(fetches[newstFetchKey.value].data) || {};
+      currentFetch.data = data(currentFetch.data) || {};
+    } else {
+      fetches[newstFetchKey.value].data = data;
+      currentFetch.data = data;
+    }
+  };
+
   onMounted(() => {
     if (!manual) {
       // 如果有缓存，则重新请求
@@ -343,6 +353,7 @@ function useAsync(service: any, options: any) {
     run,
     cancel,
     refresh,
+    mutate,
   };
 }
 

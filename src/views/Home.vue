@@ -2,6 +2,11 @@
   <div class="home">
     use-request
     <div>
+      突变
+      {{ swrRequestData?.ttt }}
+      <button @click="mutessss">突变</button>
+    </div>
+    <div>
       swr 时间:{{ swrRequestData?.data?.create_at }}
       <button @click="swrRequest.run">发送</button>
     </div>
@@ -175,6 +180,11 @@ export default defineComponent({
 
     // swr结束
 
+    // 突变
+    const mutessss = () => {
+      swrRequest.mutate({ ttt: 2222222222222 });
+    };
+
     return {
       data,
       run,
@@ -197,6 +207,7 @@ export default defineComponent({
       selected2,
       swrRequestFetch: swrRequest.fetches,
       swrRequest,
+      mutessss,
       swrRequestData: swrRequest.data,
       pollreqLoading: pollreq.loading,
       pollreqComputed: pollreq.data, //如果再用?.获取data后面的值会没有数据 估计也是跟响应式结构有关(待考究)
