@@ -1,22 +1,22 @@
 <template>
   <div class="home">
     use-request
-    <div>
-      屏幕聚焦
-      <div v-if="screenRequestLoading">loading</div>
+    <div class="card">
+      屏幕聚焦(切换不同的tab会重新发起请求)
+      <span v-if="screenRequestLoading">loading</span>
       {{ screenRequestScore?.data?.score }}
     </div>
-    <div>
+    <div class="card">
       突变
       {{ swrRequestData?.ttt }}
       <button @click="mutessss">突变</button>
     </div>
-    <div>
-      swr 时间:{{ swrRequestData?.data?.create_at }}
+    <div class="card">
+      swr(缓存,多次点击发送按钮不存在突然没了内容) 时间:{{ swrRequestData?.data?.create_at }}
       <button @click="swrRequest.run">发送</button>
     </div>
-    <div>
-      refreshDeps
+    <div class="card">
+      refreshDeps(改变其中一个下拉框都会重新请求 看network)
       <select v-model="selected">
         <option disabled value="">Please select one</option>
         <option>A</option>
@@ -30,40 +30,52 @@
         <option>L</option>
       </select>
     </div>
-    <div>
+    <div class="card">
+      ready: 能确定两个接口有先后顺序调用即可(看network,可能存在其他接口一起调用,忽略)
+      <p>接口:</p>
+      <p>/60017de35d04acb8ec217193</p>
+      <p>/5fe2b84498427e7b936a9f8c</p>
       <button @click="handleReady">ready</button>
-      <button @click="secondRequest.refresh">secondRequest Refresh</button>
     </div>
-    <div>
-      轮询
+    <div class="card">
+      轮询 (单击开始只能开启一个轮询,单例)
       <div v-if="pollreqLoading">loading...</div>
       <div v-else>{{ pollreqComputed?.data?.visit_count }}</div>
       <button @click="pollreq.run">轮询开始</button>
       <button @click="pollreq.cancel">轮询结束</button>
     </div>
-    <button @click="getList">getList</button>
-    <button @click="refresh">refreshGetList</button>
-    <button @click="cancel">cancelGetList</button>
-    <div>{{ loading }}</div>
-    <div style="margin:10px" v-for="(item, i) in data?.data" :key="i">
-      {{ item.title }}
+    <div class="card">
+      <p>
+        <button @click="getList">getList(点击请求接口topics?aa=2)</button>
+      </p>
+      <p>
+        <button @click="refresh">refreshGetList(点击重新请求接口topics?aa=2)</button>
+      </p>
+      <!-- <p>
+        <button @click="cancel">cancelGetList(单击取消接口请求 建议限流查看)</button>
+      </p> -->
 
-      <div>
-        <button @click="click(item.id)">按钮</button>
-        作者:
-        {{
-          detailFetches?.[item.id]?.loading
-            ? 'loading'
-            : detailFetches?.[item.id]?.data?.data?.author?.loginname
-        }}
-        <button v-if="detailFetches?.[item.id]?.loading" @click="cancelCur">取消当前请求</button>
+      <div>{{ loading }}</div>
+      <div style="margin:10px" v-for="(item, i) in data?.data" :key="i">
+        {{ item.title }}
+
+        <div>
+          <button @click="click(item.id)">按钮</button>
+          作者:
+          {{
+            detailFetches?.[item.id]?.loading
+              ? 'loading'
+              : detailFetches?.[item.id]?.data?.data?.author?.loginname
+          }}
+          <button v-if="detailFetches?.[item.id]?.loading" @click="cancelCur">取消当前请求</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watchEffect } from 'vue';
+import { defineComponent, ref, watch, watchEffect } from 'vue';
 import { useRequest } from '@/use';
 
 export default defineComponent({
@@ -84,6 +96,9 @@ export default defineComponent({
       return {
         url: 'https://cnodejs.org/api/v1/topic/' + id,
         methods: 'get',
+        params: {
+          test: 333,
+        },
       };
     }
 
@@ -141,11 +156,10 @@ export default defineComponent({
     }
 
     const secondRequest = useRequest(params => secondParam(params), { manual: true });
-
-    watchEffect(() => {
-      if (firstRequestData.value) {
-        secondRequest.run(firstPa.value[0]);
-      }
+    // 这样写才能做到依赖请求
+    // 改成watchEffect好像有点问题 第二个接口会请求多一次
+    watch(firstRequestData, () => {
+      secondRequest.run(firstPa.value[0]);
     });
 
     const handleReady = () => {
@@ -180,7 +194,7 @@ export default defineComponent({
     }
 
     const swrRequest = useRequest(() => swrFunc(), {
-      cacheKey: 'swr',
+      // cacheKey: 'swr',
     });
 
     // swr结束
@@ -193,7 +207,7 @@ export default defineComponent({
     // 屏幕聚焦
 
     const screenRequest = useRequest('https://cnodejs.org/api/v1/user/alsotang', {
-      refreshOnWindowFocus: true,
+      // refreshOnWindowFocus: true,
     });
 
     return {
@@ -229,3 +243,13 @@ export default defineComponent({
   components: {},
 });
 </script>
+
+<style lang="scss" scoped>
+.card {
+  border: 1px solid;
+  padding: 20px;
+  margin: 20px;
+  border-color: rgb(235, 237, 241);
+  border-radius: 1px;
+}
+</style>

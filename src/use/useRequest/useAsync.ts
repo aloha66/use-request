@@ -30,6 +30,8 @@ import limit from './utils/limit';
 
 const DEFAULT_KEY = 'AHOOKS_USE_REQUEST_DEFAULT_KEY';
 
+const fetchKeyStore: string[] = []; // 请求顺序
+
 function useAsync(service: any, options: any) {
   const _options = options || {};
   const {
@@ -113,15 +115,26 @@ function useAsync(service: any, options: any) {
           clearTimeout(loadingDelayTimer);
         }
         const formattedResult = formatResult ? formatResult(res) : res;
-        fetches[newstFetchKey.value].loading = false;
-        fetches[newstFetchKey.value].data = formattedResult;
-        fetches[newstFetchKey.value].error = undefined;
 
-        // fetches[newstFetchKey.value] = {
-        //   loading: false,
-        //   error: undefined,
-        //   data: formattedResult,
-        // };
+        // 处理并行请求返回数据顺序问题
+        // 起因: 每一个请求响应的时间不一样
+        // 导致返回顺序不一样
+        // 例子: A请求发完再发B请求,结果后端返回B然后是A
+        // 这样就出现了乱序的情况
+        // 需要前端在发出请求的时候先确认顺序
+        // 然后在获取请求的时候进行
+        if (fetchKeyStore.length > 0) {
+          const [fetchId] = args[0];
+          const index = fetchKeyStore.findIndex(item => item === fetchId);
+          const [key] = fetchKeyStore.splice(index, 1);
+          fetches[key].loading = false;
+          fetches[key].data = formattedResult;
+          fetches[key].error = undefined;
+        } else {
+          fetches[newstFetchKey.value].loading = false;
+          fetches[newstFetchKey.value].data = formattedResult;
+          fetches[newstFetchKey.value].error = undefined;
+        }
 
         // 拿到结果后存入cache
         if (cacheKey) {
@@ -203,6 +216,7 @@ function useAsync(service: any, options: any) {
   }
 
   const run = (...args: any) => {
+    count = 0; // 复位
     // 缓存处理开始
     if (cacheKey) {
       // 看这里的代码的时候先看下面setCache的内容
@@ -229,6 +243,7 @@ function useAsync(service: any, options: any) {
     if (fetchKey) {
       const key = fetchKey(...args);
       newstFetchKey.value = key === undefined ? DEFAULT_KEY : key;
+      fetchKeyStore.push(key); // 并行请求存储请求顺序
 
       const currentFetchKey = newstFetchKey.value;
       if (!fetches[currentFetchKey]) {
